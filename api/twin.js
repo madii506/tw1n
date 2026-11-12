@@ -3,7 +3,7 @@
 // Buying a twin buys its pair first, in one pump.fun multi-hop swap: SOL -> pair -> twin. Selling walks back: twin -> pair -> SOL.
 // So a twin feeds its pair instead of draining it like a vamp. TWIN lets each coin have one twin, first come.
 // TWIN never holds a key or a coin: every transaction is built here and signed in the user's own wallet.
-// Every launch carries a memo and a 0-lamport touch of the TAG address, so the list of twins is read back from the chain,
+// Every launch carries a 0-lamport touch of the TAG address, so the list of twins is read back from the chain,
 // and each launch is checked against the coin's own bonding curve: its creator and its quote mint must match.
 const { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, ComputeBudgetProgram, VersionedTransaction, Keypair } = require('@solana/web3.js');
 
@@ -45,7 +45,6 @@ const solUsd = () => memo('solusd', 20000, async () => { const j = await getJ(`$
 const TX = new Map();
 async function txs(sigs) { const need = [...new Set(sigs)].filter(s => !TX.has(s)); for (let i = 0; i < need.length; i += 10) { const part = need.slice(i, i + 10), got = await conn.getParsedTransactions(part, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }); got.forEach((t, k) => { if (t) TX.set(part[k], t); }); } return sigs.map(s => TX.get(s) || null); }
 function parseRite(t, s) { if (!t || (t.meta && t.meta.err)) return null; const msg = t.transaction.message, by = k58(msg.accountKeys[0].pubkey), at = t.blockTime || s.blockTime || 0;
-  const m = msg.instructions.find(ix => ix.program === 'spl-memo' && ix.parsed === 'twin:1'); if (!m) return null;
   const signers = msg.accountKeys.filter((k, i) => i > 0 && k.signer).map(k => k58(k.pubkey)); if (signers.length !== 1) return null;
   return { kind: 'launch', sig: s.signature, at, w: by, mint: signers[0], pair: null }; }
 const IDX = { rows: new Map(), newest: null };
@@ -93,9 +92,9 @@ async function buildLaunch(b, req) { const from = pk(b.from, 'connect a wallet f
   const c = await check(pair.toBase58()); if (!c.pairable) throw new Error(c.reason || 'that coin cannot be paired');
   if (await conn.getAccountInfo(mint)) throw new Error('that coin address is taken. try again');
   const r = await online().resolveQuoteMint(pair), ps = c.coin ? clean(c.coin.symbol, 10).replace(/[^A-Za-z0-9]/g, '') : '';
-  const uri = `${host(req)}/api/twin?a=t&n=${encodeURIComponent(name)}&s=${symbol}&ps=${encodeURIComponent(ps)}&i=${img}`; if (uri.length > 200) throw new Error('that name is too long for the metadata link. shorten it');
+  const enc = v => encodeURIComponent(v).replace(/%20/g, '+'), uri = `${host(req)}/api/twin?a=t&n=${enc(name)}&s=${symbol}&ps=${enc(ps)}&i=${img}`; if (uri.length > 200) throw new Error('that name is too long for the metadata link. shorten it');
   const ix = await SDKm().PUMP_SDK.createV2Instruction({ mint, name, symbol, uri, creator: from, user: from, mayhemMode: false, quoteMint: pair, quoteTokenProgram: r.quoteTokenProgram, pumpQuote: r.pumpQuote && r.pumpQuote.accounts });
-  const t = new Transaction({ feePayer: from, recentBlockhash: b.bh || await bh() }); t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }), ix, memoIx('twin:1', from), tagIx(from)); if (size(t) <= 1180) t.instructions.splice(1, 0, ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }));
+  const t = new Transaction({ feePayer: from, recentBlockhash: b.bh || await bh() }); t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }), ix, tagIx(from)); if (size(t) <= 1218) t.instructions.splice(1, 0, ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }));
   if (size(t) > 1232) throw new Error(`the launch transaction is ${size(t)} bytes, over Solana's 1232. shorten the name or ticker`); return { t, mint: mint.toBase58(), pair: pair.toBase58(), uri }; }
 // buy and sell walk the quote chain in one pump.fun multi-hop swap, priced by simulating it first
 async function route(mint, side) { const l = (await twinsIndex(false)).find(x => x.mint === mint) || (await twinsIndex(true)).find(x => x.mint === mint); if (!l) throw new Error('that coin is not a twin on TWIN');
