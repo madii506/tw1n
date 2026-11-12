@@ -75,6 +75,10 @@ async function twin(m, fresh) { const mint = pk(m, 'that is not a coin address')
 async function tokenMeta(mint) { return memo('meta:' + mint, 3600e3, async () => { const ix = await conn.getParsedAccountInfo(new PublicKey(mint)), ext = ix.value && ix.value.data && ix.value.data.parsed && ix.value.data.parsed.info && ix.value.data.parsed.info.extensions || [], md = (ext.find(e => e.extension === 'tokenMetadata') || {}).state;
   if (!md) return null; let image = null; try { const j = await getJ(md.uri, 5000); image = j && j.image || null; } catch { } return { name: md.name, symbol: md.symbol, uri: md.uri, image }; }); }
 
+// coin pictures through one cache: many live on slow IPFS gateways
+const okImgUrl = u => { try { const x = new URL(String(u)); return x.protocol === 'https:' && !/^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(x.hostname) && x.hostname.includes('.') ? x.toString() : null; } catch { return null; } };
+const img = u => memo('img:' + u, 86400e3, async () => { const r = await fetch(u, { signal: AbortSignal.timeout(8000), headers: { 'user-agent': 'Mozilla/5.0 (TWIN image cache)' }, redirect: 'follow' }), type = r.headers.get('content-type') || '';
+  if (!r.ok || !/^image\//.test(type)) throw new Error('not an image'); const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 3e6) throw new Error('too large'); return { type, buf }; });
 // ---------------------------------------------------------------- pairs: can this coin be paired, and is it free
 async function check(m) { const mint = pk(m, 'paste a coin address or pick one').toBase58(), [tw, info] = await Promise.all([twinOf(false), jupInfo([mint])]), row = info[mint] || null, taken = tw.get(mint) || null;
   let r = null, why = null; try { r = await memo('rq:' + mint, 60000, () => online().resolveQuoteMint(new PublicKey(mint))); } catch (e) { why = String(e && e.message || e); }
@@ -117,7 +121,7 @@ const state = () => memo('state', 60000, async () => { const g = await global(),
 async function sim(q, req) { const kind = String(q.kind || ''), w = pk(q.w, 'add a wallet to dry-run from (w=)'), runs = [];
   const run = async (t, what) => { const t0 = Date.now(), v = (await conn.simulateTransaction(new VersionedTransaction(t.compileMessage()), { sigVerify: false, replaceRecentBlockhash: true, commitment: 'confirmed' })).value;
     runs.push({ what, err: v.err ? JSON.stringify(v.err) : null, units: v.unitsConsumed ?? null, ms: Date.now() - t0, bytes: size(t), logs: (v.logs || []).filter(l => /Memo|invoke \[1\]|success$|failed|rror|Program log: (Instruction|Error)/.test(l)).slice(-16) }); };
-  if (kind === 'launch') { const kp = Keypair.generate(), x = await buildLaunch({ from: w.toBase58(), mint: kp.publicKey.toBase58(), pair: q.pair, name: 'dry run', symbol: 'TEST', img: 1, bh: '11111111111111111111111111111111' }, req); x.t.partialSign(kp); await run(x.t, 'create twin + rule'); }
+  if (kind === 'launch') { const kp = Keypair.generate(), x = await buildLaunch({ from: w.toBase58(), mint: kp.publicKey.toBase58(), pair: q.pair, name: clean(q.n, 32) || 'dry run', symbol: clean(q.s, 10) || 'TEST', img: 1, bh: '11111111111111111111111111111111' }, req); x.t.partialSign(kp); await run(x.t, 'create twin + rule'); }
   else if (kind === 'buy' || kind === 'sell') { const x = await buildTrade({ from: w.toBase58(), mint: q.mint, sol: +q.sol || .01, pct: 100 }, kind); await run(Transaction.from(Buffer.from(x.txs[0], 'base64')), `${kind} via ${kind === 'buy' ? 'SOL > pair > twin' : 'twin > pair > SOL'}`); runs[0].est = x.out; }
   else throw new Error('kind is launch, buy or sell');
   return { kind, w: w.toBase58(), at: Date.now(), runs }; }
@@ -137,6 +141,7 @@ module.exports = async (req, res) => {
       if (a === 'sol') return out(res, 200, { usd: await solUsd() }, 'public, max-age=20, s-maxage=30');
       if (a === 'status') { const v = (await conn.getSignatureStatuses([String(q.sig || '')], { searchTransactionHistory: false })).value[0]; return out(res, 200, { status: v ? (v.err ? 'failed' : v.confirmationStatus) : null, err: v && v.err ? JSON.stringify(v.err) : null }); }
       if (a === 'bal') { const w = pk(q.w), m = pk(q.mint), [sol, accs] = await Promise.all([conn.getBalance(w), conn.getParsedTokenAccountsByOwner(w, { mint: m })]); return out(res, 200, { sol: sol / 1e9, tokens: accs.value.reduce((s, x) => s + (+x.account.data.parsed.info.tokenAmount.uiAmount || 0), 0) }); }
+      if (a === 'img') { const u = okImgUrl(q.u); if (!u) throw new Error('bad image link'); const im = await img(u); res.statusCode = 200; res.setHeader('content-type', im.type); res.setHeader('cache-control', 'public, max-age=86400, s-maxage=604800'); return res.end(im.buf); }
       if (a === 't') return out(res, 200, metadata(q, req), 'public, max-age=86400, s-maxage=31536000, immutable');
       if (a === 'sim') return out(res, 200, await sim(q, req), 'public, max-age=15, s-maxage=30');
       return out(res, 400, { error: 'unknown action' });
