@@ -1,4 +1,5 @@
 @font-face { font-family: ID; src: url(/assets/fonts/interd-700.woff2) format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: IN; src: url(/assets/fonts/inter.woff2) format('woff2'); font-weight: 400 700; font-display: swap; }
 @font-face { font-family: JB; src: url(/assets/fonts/jbmono.woff2) format('woff2'); font-weight: 100 800; font-display: swap; }
 :root { --bg: #05050a; --bg2: #0b1012; --card: #0a0f10; --fg: #eef3f1; --dim: #7d8a86; --dim2: #4c5654; --line: #172022; --line2: #24302f; --g: #8d8cff; --g2: rgba(141, 140, 255, .12); --red: #ff6b6b; --red2: rgba(255, 107, 107, .12); --mono: JB, ui-monospace, Menlo, monospace; --disp: ID, Inter, system-ui, sans-serif; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -393,6 +394,35 @@ html { scroll-behavior: auto; }
 .vr-c { display: flex; align-items: center; gap: 18px; flex-wrap: nowrap; } .vr-stack { display: flex; align-items: center; } .vr-stack a { margin-left: -10px; transition: transform .25s; } .vr-stack a:first-child { margin-left: 0; } .vr-stack a:hover { transform: translateY(-4px); }
 .vr-stack .ci { box-shadow: 0 0 0 2px #08080f; filter: saturate(.7); } .vr-stack em { font-style: normal; font-size: 12px; color: var(--dim); margin-left: 8px; }
 .vr-sum b { display: block; color: var(--red); font-size: 15px; } .vr-sum small { font-size: 10px; letter-spacing: .08em; color: var(--dim); }
+
+/* ---------- polish 1 */
+:root { --sans: IN, Inter, system-ui, -apple-system, sans-serif; }
+body { font: 400 15px/1.6 var(--sans); letter-spacing: -.005em; }
+.sub, .step p, details p, .note, .liq, .empty, .lbl, .form label, summary, .pc-route, .sides button span, .hp-coin small, .cc-top small, .vr-o small { font-family: var(--sans); }
+.btn { font: 600 14px/1 var(--sans); letter-spacing: -.01em; } .btn.sm { font-size: 13px; }
+.links { font-family: var(--sans); font-size: 13.5px; font-weight: 500; }
+summary { font-size: 16px; font-weight: 600; }
+.form label, .lbl { letter-spacing: .08em; font-size: 10.5px; font-weight: 600; }
+.kicker, .pill, .kick, .chips button, .rule, .cc-pos span, .hp-stats span, .stat-grid span, .tc-stats span, .pl span, .vr-n small, .ca, .tape, .sc-d { font-family: var(--mono); }
+.sub { font-size: 17px; line-height: 1.55; color: #c9c9d6; max-width: 440px; }
+/* section heads: centred, one kicker, one line */
+.head { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 34px; } .head h2 { max-width: 820px; }
+.faq-grid .head { align-items: flex-start; text-align: left; }
+/* the hero label is a quiet kicker, not a chip */
+.hero .pill { border: 0; padding: 0; height: auto; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+/* featured card: the pair is the moment */
+.pair-card { gap: 16px; padding: 22px 24px 24px; }
+.pc-top .kick { display: inline-flex; align-items: center; gap: 8px; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); } .pc-top .row { gap: 6px; flex-wrap: nowrap; } .pc-top .btn { width: 36px; padding: 0; font-size: 16px; }
+.pc-duo { position: relative; grid-template-columns: 1fr 120px 1fr; padding: 6px 0 0; } .pc-duo .ci.lg2 { width: 96px; height: 96px; font-size: 30px; } .pc-duo .pc-c { align-items: center; }
+.pc-arc { width: 120px; height: 40px; overflow: visible; } .pc-arc path { fill: none; stroke: var(--g); stroke-width: 2; stroke-dasharray: 2 7; stroke-linecap: round; animation: arc 1.2s linear infinite; }
+@keyframes arc { to { stroke-dashoffset: -18; } }
+.hp-coin { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; } .hp-coin b { font: 700 30px/1 var(--disp); letter-spacing: -.02em; } .hp-coin small { color: var(--dim); font-size: 13px; } .hp-coin .ca { align-self: center; }
+.hp-stats { grid-template-columns: repeat(3, 1fr); border-radius: 14px; } .hp-stats div { text-align: center; padding: 12px 8px; } .hp-stats b { font: 700 17px/1.2 var(--disp); }
+.hp-acts { grid-template-columns: 1.5fr 1fr; }
+/* cards: no box inside a box, hairline rows instead */
+.coin-card .cc-pos { background: none; border: 0; border-top: 1px solid rgba(255, 255, 255, .06); border-bottom: 1px solid rgba(255, 255, 255, .06); border-radius: 0; padding: 12px 2px; }
+.coin-card .cc-pos b { font-family: var(--disp); font-weight: 700; font-size: 15px; }
+.pk .cc-top .ci, .tw .duo .ci { width: 44px; height: 44px; }
 @media (max-width: 920px) { .menu { display: inline-flex; } #nav { grid-template-columns: 1fr auto; } #nav.open .links { display: flex; position: fixed; top: 64px; left: 16px; right: 16px; flex-direction: column; border-radius: 18px; padding: 10px; background: rgba(8, 8, 15, .96); }
   #nav.open .links a { padding: 12px 14px; font-size: 14px; } .vr { grid-template-columns: minmax(0, 1fr) 70px; } .vr-c, .vr-a { grid-column: 1 / -1; } .hp-stats { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .hp-acts { grid-template-columns: 1fr 1fr; } .hp-acts .btn:first-child { grid-column: span 2; } .hp-id b { font-size: 22px; } }
@@ -425,3 +455,15 @@ html { scroll-behavior: auto; }
   .sp-head { flex-wrap: wrap; } .sp-head .tc-px { margin-left: 0; text-align: left; width: 100%; } .sp-id b { font-size: 26px; } .sp-tf { flex-wrap: wrap; } .mv { grid-template-columns: 34px 1fr auto; } .mv .mv-p { display: none; }
   .br { grid-template-columns: minmax(0, 1fr) 70px 112px; padding: 10px 12px; } .br > :nth-child(2) { display: none; } .br .lg.md { width: 28px; height: 28px; } .br .btn { padding: 0 9px; height: 30px; }
 }
+@media (max-width: 600px) {
+  .btn, .btn.sm, .links a, .chips button, .seg button, .ca, .stk button, .stocks button, #menuBtn, #connect { min-height: 44px; }
+  .chips button, .stk button, .stocks button { padding: 0 14px; } .pc-top .btn { width: 44px; } .find { min-height: 46px; } .find input { min-height: 44px; } .paste input { min-height: 44px; }
+  .brand { min-height: 44px; } .pulse { padding-left: 16px; padding-right: 16px; } .pl { min-width: 0; } .pl b { font-size: 26px; }
+  .vr { margin: 0; } .vamp-list, .pulse { overflow: hidden; } .pc-duo { grid-template-columns: 1fr 80px 1fr; } .pc-arc { width: 80px; } .pc-duo .ci.lg2 { width: 76px; height: 76px; }
+  .sub { font-size: 15.5px; }
+}
+@media (max-width: 600px) { .hp-acts .btn, .pc-top .btn, .pk-acts .btn, .vr-a .btn { height: 46px; } [data-copy], #menuBtn, .pc-top .btn { min-width: 46px; min-height: 46px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+.pk-acts { flex-wrap: nowrap; } .pk-acts .btn { padding: 0 11px; } .pk-acts [data-copy] { width: 32px; padding: 0; flex: none; }
+@media (max-width: 600px) { .board-bar .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; padding-bottom: 2px; } .board-bar .chips::-webkit-scrollbar { display: none; } .board-bar { flex-wrap: wrap; } .pk-acts [data-copy] { width: 46px; } }
+@media (max-width: 600px) { .vr-stack a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin-left: -16px; } .vr-stack a:first-child { margin-left: -5px; } }

@@ -168,16 +168,17 @@ async function signSend(b64, extra) { const S = await web3(), tx = S.Transaction
 // ---------------------------------------------------------------- hero, tape, pulse, orbit
 let HP = 0; const free = () => HOT.filter(c => !c.twin); const featured = () => { const v = free().filter(c => c.pairable); return v.length ? v : free(); };
 function heroPair() { const F = featured(); if (!F.length) return; const c = F[((HP % F.length) + F.length) % F.length], ok = !!c.pairable;
-  $('#hpLabel').innerHTML = `featured pump.fun coin ${ok ? '<b class="g">· pump.fun accepts it as a pair</b>' : ''}`;
-  $('#hpCoin').innerHTML = `${ic(c, 'lg2')}<div class="hp-id"><b>${esc(sym(c))}</b><small>${esc(nm(c))}</small><button class="ca" data-copy="${esc(c.mint)}">${esc(short(c.mint))} ⧉</button></div>`;
+  $('#hpLabel').innerHTML = `<i class="dot${ok ? '' : ' off'}"></i>${ok ? 'featured · pump.fun accepts it' : 'featured'}`;
+  $('#hpPair').innerHTML = `${ic(c, 'lg2')}`;
+  $('#hpCoin').innerHTML = `<b>${esc(sym(c))}</b>${nm(c) ? `<small>${esc(nm(c))}</small>` : ''}<button class="ca" data-copy="${esc(c.mint)}" aria-label="copy contract address">${esc(short(c.mint))} ⧉</button>`;
   const cell = (k, v, cls = '') => `<div><span>${k}</span><b class="${cls}">${v}</b></div>`;
-  $('#hpStats').innerHTML = cell('mcap', usd(c.mcap)) + cell('1h', pct(c.ch1), (c.ch1 || 0) >= 0 ? 'g' : 'r') + cell('24h', pct(c.ch24), (c.ch24 || 0) >= 0 ? 'g' : 'r') + cell('holders', big(c.holders)) + cell('24h volume', usd(c.vol24)) + cell('liquidity', usd(c.liq)) + cell('buys / sells 1h', c.buys1h != null ? big(c.buys1h) + ' / ' + big(c.sells1h) : '—') + cell(c.graduated ? 'pump.fun' : 'curve', c.graduated ? 'graduated' : 'on curve');
-  $('#hpPair').innerHTML = `${ic(c, 'lg2')}<b>${esc(sym(c))}</b><small>the pair</small>`; $('#hpRoute').innerHTML = `<span>SOL</span><b>›</b><span>${esc(sym(c))}</span><b>›</b><span>your twin</span>`;
-  $('#hpGo').onclick = () => pick(c.mint); $('#hpPump').href = 'https://pump.fun/coin/' + c.mint; $('#hpCopy').onclick = () => { navigator.clipboard && navigator.clipboard.writeText(c.mint); toast('contract address copied'); };
-  if (window.gsap && !reduced) gsap.fromTo(['#hpCoin', '#hpStats', '.pc-duo'], { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: .6, ease: 'expo.out', stagger: .06 }); }
+  $('#hpStats').innerHTML = cell('mcap', usd(c.mcap)) + cell('1h', pct(c.ch1), (c.ch1 || 0) >= 0 ? 'g' : 'r') + cell('holders', big(c.holders));
+  $('#hpRoute').innerHTML = `<span>SOL</span><b>›</b><span>${esc(sym(c))}</span><b>›</b><span>your twin</span>`;
+  $('#hpGo').onclick = () => pick(c.mint); $('#hpPump').href = 'https://pump.fun/coin/' + c.mint;
+  if (window.gsap && !reduced) gsap.fromTo(['#hpPair', '#hpCoin', '#hpStats'], { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: .6, ease: 'expo.out', stagger: .06 }); }
 $('#hpNext').onclick = () => { HP++; heroPair(); }; $('#hpPrev').onclick = () => { HP--; heroPair(); };
 function tape() { if (!HOT.length) return; const h = HOT.map(c => `<span data-pair="${esc(c.mint)}">${ic(c, 'xs')}<b>${esc(sym(c))}</b>${usd(c.mcap)} <i class="${(c.ch1 || 0) >= 0 ? 'g' : 'r'}" style="font-style:normal">${pct(c.ch1)}</i>${c.twin ? ' <em>twin</em>' : ''}</span>`).join(''); $('.tape-in').innerHTML = h + h; }
-function stack() { const F = featured(); $('#stack').innerHTML = F.slice(0, 7).map(c => ic(c, 'st')).join(''); $('#stackN').textContent = F.length || '—'; }
+function stack() { const S = $('#stack'); if (!S) return; const F = featured(); S.innerHTML = F.slice(0, 7).map(c => ic(c, 'st')).join(''); $('#stackN').textContent = F.length || '—'; }
 let orbitDone = false; function orbit() { if (orbitDone || !HOT.length) return; orbitDone = true; const L2 = HOT.slice(0, 24); $('#orbit').innerHTML = [L2.slice(0, 10), L2.slice(10, 24)].map((ring, k) => `<div class="ring r${k}">${ring.map((c, i) => `<span style="--a:${(i / ring.length * 360).toFixed(1)}deg">${ic(c, 'md')}</span>`).join('')}</div>`).join(''); }
 const countTo = (el, v, fmt) => { if (!el || v == null || isNaN(v)) return; const old = +el.dataset.v || 0; el.dataset.v = v; if (!window.gsap || reduced || old === v) { el.textContent = fmt(v); return; } const o = { v: old }; gsap.to(o, { v, duration: 1.4, ease: 'expo.out', onUpdate: () => el.textContent = fmt(o.v) }); };
 function pulse() { countTo($('#pTwins'), TWINS.length, v => Math.round(v)); const locked = TWINS.reduce((s, t) => s + (t.twin.pairLocked && t.pairCoin && t.pairCoin.usd ? t.twin.pairLocked * t.pairCoin.usd : 0), 0); countTo($('#pLocked'), locked, v => usd(v));
@@ -199,7 +200,7 @@ function go(id) { const el = id === 'top' ? 0 : document.getElementById(id); if 
 function motion() { if (window.Lenis && !reduced) { lenis = new Lenis({ duration: 1.1, smoothWheel: true, prevent: n => !!n.closest('.page') }); if (window.gsap) { lenis.on('scroll', ScrollTrigger.update); gsap.ticker.add(t => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0); } }
   const links = $$('.links a'); addEventListener('scroll', () => { document.body.classList.toggle('scrolled', scrollY > 40); let cur = -1; links.forEach((a, i) => { const s = document.getElementById(a.dataset.go); if (s && s.getBoundingClientRect().top < innerHeight * .45) cur = i; }); links.forEach((a, i) => a.classList.toggle('on', i === cur)); }, { passive: true });
   if (!window.gsap || reduced) return; gsap.registerPlugin(ScrollTrigger);
-  gsap.from(['.hero .pill', '.hero h1', '.hero .sub', '.hero .row', '.hero .stack'], { y: 30, opacity: 0, duration: 1.1, ease: 'expo.out', stagger: .09, delay: .15 });
+  gsap.from(['.hero .pill', '.hero h1', '.hero .sub', '.hero .row'], { y: 30, opacity: 0, duration: 1.1, ease: 'expo.out', stagger: .09, delay: .15 });
   gsap.from('.pair-card', { y: 40, opacity: 0, scale: .97, duration: 1.3, ease: 'expo.out', delay: .25 });
   gsap.from('.pl', { y: 40, opacity: 0, duration: 1, ease: 'expo.out', stagger: .07, scrollTrigger: { trigger: '.pulse', start: 'top 92%' } });
   gsap.set('.rv', { opacity: 0 }); ScrollTrigger.batch('.rv', { start: 'top 88%', onEnter: b => gsap.fromTo(b, { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 1, ease: 'expo.out', stagger: .08, overwrite: true }) });
