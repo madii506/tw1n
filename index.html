@@ -8,13 +8,15 @@
 <meta name="theme-color" content="#05050a">
 <meta property="og:title" content="TWIN">
 <meta property="og:description" content="Pair a coin to a coin.">
-<meta property="og:image" content="/og.png">
+<meta property="og:image" content="https://tw1n.vercel.app/og.png">
+<meta name="twitter:image" content="https://tw1n.vercel.app/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon.png">
 <link rel="preload" href="/assets/fonts/interd-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/jbmono.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/twin.css?v=4">
+<link rel="stylesheet" href="/assets/twin.css?v=5">
 </head>
 <body class="intro-on">
 <canvas id="world" aria-hidden="true"></canvas><canvas id="bg" aria-hidden="true"></canvas><div id="veil" aria-hidden="true"></div>
@@ -32,17 +34,16 @@
     <div class="hero-l">
       <span class="pill"><i class="dot"></i><span id="state">pairing live on pump.fun</span></span>
       <h1>Pair a coin<br>to a <span class="g">coin</span>.</h1>
-      <p class="sub">Launch the twin of any pump.fun coin. The twin is priced in that coin, so every buy of the twin buys the original first. Twins feed. Vamps drain.</p>
+      <p class="sub">Every buy of the twin buys the original first. Twins feed. Vamps drain.</p>
       <div class="row hero-btns"><a class="btn" href="#pick" data-go="pick">pick a coin</a><a class="btn ghost" href="#launch" data-go="launch">launch a twin</a><a class="btn ghost" href="#twins" data-go="twins">see the twins</a></div>
-      <button class="stack" data-go="pick" aria-label="trending coins"><span class="stack-l" id="stack"></span><span><b id="stackN">—</b> trending coins with no twin yet ›</span></button>
     </div>
     <div class="pair-card glass spot" id="heroPair">
-      <div class="pc-top"><span class="dim" id="hpLabel">featured pump.fun coin</span><div class="row" style="gap:6px"><button class="btn sm ghost" id="hpPrev" aria-label="previous">‹</button><button class="btn sm ghost" id="hpNext">next ›</button></div></div>
-      <div class="hp-coin" id="hpCoin"><span class="dim">reading what is trending on pump.fun…</span></div>
+      <div class="pc-top"><span class="kick" id="hpLabel">featured</span><div class="row"><button class="btn sm ghost" id="hpPrev" aria-label="previous coin">‹</button><button class="btn sm ghost" id="hpNext" aria-label="next coin">›</button></div></div>
+      <div class="pc-duo"><div class="pc-c" id="hpPair"></div><svg class="pc-arc" viewBox="0 0 120 40" aria-hidden="true"><path d="M6 30 Q60 -6 114 30" /></svg><div class="pc-c" id="hpTwin"><span class="ci lg2 ph2 slot">?</span></div></div>
+      <div class="hp-coin" id="hpCoin"><span class="dim">reading pump.fun…</span></div>
       <div class="hp-stats" id="hpStats"></div>
-      <div class="pc-duo"><div class="pc-c" id="hpPair"></div><div class="pc-link"><i></i><i></i><i></i></div><div class="pc-c" id="hpTwin"><span class="ci lg2 ph2 slot">?</span><b>your twin</b><small>launched by you</small></div></div>
       <div class="pc-route" id="hpRoute"><span>SOL</span><b>›</b><span>$PAIR</span><b>›</b><span>your twin</span></div>
-      <div class="hp-acts"><button class="btn" id="hpGo">pair this coin</button><a class="btn ghost" id="hpPump" href="https://pump.fun" target="_blank" rel="noopener">pump.fun ↗</a><button class="btn ghost" id="hpCopy">copy CA</button></div>
+      <div class="hp-acts"><button class="btn" id="hpGo">pair this coin</button><a class="btn ghost" id="hpPump" href="https://pump.fun" target="_blank" rel="noopener">pump.fun ↗</a></div>
     </div>
     <button class="scroll-cue" data-go="pulse" aria-label="scroll"><i></i></button>
   </section>
@@ -58,7 +59,7 @@
   </section>
 
   <section class="tool" id="pick" data-n="01">
-    <div class="head rv"><span class="kicker">01 · coins</span><h2>Every coin gets one twin.</h2><p class="lead">Live pump.fun coins only. Any of them can be paired, first come: search one, or take one that is running right now.</p></div>
+    <div class="head rv"><span class="kicker">01 · coins</span><h2>Every coin gets one twin.</h2></div>
     <div class="board-bar rv">
       <label class="find"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input id="fQ" placeholder="name, ticker or contract address" autocomplete="off"></label>
       <div class="chips" id="fFilter"><button data-v="all" class="on">all</button><button data-v="free">free</button><button data-v="taken">has a twin</button></div>
@@ -69,13 +70,13 @@
   </section>
 
   <section class="tool" id="vamps" data-n="02">
-    <div class="head rv"><span class="kicker">02 · vamp radar</span><h2>Every hit gets copied.</h2><p class="lead">The coins running right now, and how many other tokens on Solana already wear the same ticker. A twin feeds the original. A vamp drains it.</p></div>
+    <div class="head rv"><span class="kicker">02 · vamp radar</span><h2>Every hit gets copied.</h2></div>
     <div class="board-bar rv"><div class="chips sm" id="vSort"><span class="dim">sort</span><button data-v="copies" class="on">most copied</button><button data-v="mcap">biggest original</button><button data-v="copym">copies' mcap</button></div><button class="btn sm ghost" id="vRefresh">↻ scan again</button></div>
     <div class="vamp-list rv" id="vampList"><div class="empty"><span>scanning Solana for copies…</span></div></div>
   </section>
 
   <section class="tool" id="launch" data-n="03">
-    <div class="head rv"><span class="kicker">03 · launch</span><h2>Launch the twin.</h2><p class="lead">A pump.fun coin priced in its pair. The pairing is written into the coin's own curve and can never change.</p></div>
+    <div class="head rv"><span class="kicker">03 · launch</span><h2>Launch the twin.</h2></div>
     <div class="launch-grid">
       <form class="card glass form rv" id="launchForm" autocomplete="off">
         <div class="lbl">pair with</div>
@@ -95,7 +96,7 @@
   </section>
 
   <section class="tool" id="twins" data-n="04">
-    <div class="head rv"><span class="kicker">04 · twins</span><h2>Every twin, live.</h2><p class="lead">Read from the chain: each twin's curve, its price in its pair, and how much of the pair it holds.</p></div>
+    <div class="head rv"><span class="kicker">04 · twins</span><h2>Every twin, live.</h2></div>
     <div class="board-bar rv"><div class="chips sm" id="tSort"><button data-v="mcap" class="on">biggest</button><button data-v="new">newest</button><button data-v="prog">closest to graduating</button></div><button class="btn sm ghost" id="tRefresh">↻ refresh</button></div>
     <div class="coin-grid" id="twinGrid"></div>
   </section>
@@ -112,7 +113,7 @@
   </section>
 
   <section class="tool" id="math" data-n="06">
-    <div class="head rv"><span class="kicker">06 · pair math</span><h2>What a twin does for its pair.</h2><p class="lead">Every SOL spent on a twin is spent on its pair first. An estimate from live prices, before pump.fun's fees and price impact.</p></div>
+    <div class="head rv"><span class="kicker">06 · pair math</span><h2>What a twin does for its pair.</h2></div>
     <div class="calc rv">
       <div class="card glass form"><div class="lbl">the pair</div><div class="stk wrap" id="mPick"></div>
         <label>SOL spent buying the twin<input id="mSol" type="number" min="0" value="10"></label><input id="mRange" class="range" type="range" min="0" max="3" step="0.01" value="1" aria-label="SOL, on a log scale"><div class="chips sm" id="mSolQ"><button type="button" data-v="1">1</button><button type="button" data-v="10" class="on">10</button><button type="button" data-v="50">50</button><button type="button" data-v="100">100</button><button type="button" data-v="500">500</button></div></div>
@@ -122,7 +123,7 @@
 
   <section class="tool" id="faq" data-n="07">
     <div class="faq-grid">
-      <div class="head rv"><span class="kicker">07 · the fine print</span><h2>Questions.</h2><p class="lead">Open a twin and look at its curve before you buy.</p><div class="row" style="margin-top:22px"><button class="btn sm ghost" data-go="pick">pick a coin</button><button class="btn sm ghost" data-go="twins">see the twins</button></div></div>
+      <div class="head rv"><span class="kicker">07 · the fine print</span><h2>Questions.</h2><div class="row" style="margin-top:22px"><button class="btn sm ghost" data-go="pick">pick a coin</button><button class="btn sm ghost" data-go="twins">see the twins</button></div></div>
       <div class="qa rv">
         <details><summary>What is a twin?</summary><p>A pump.fun coin whose bonding curve is priced in another pump.fun coin, its pair, instead of SOL. pump.fun supports these curves natively and stores the pair inside the curve, so the pairing is on-chain and permanent.</p></details>
         <details><summary>Why does it stop vamps?</summary><p>A vamp copies a coin and pulls buyers away from it. A twin is priced in the coin it copies, so every buy of the twin buys the original first. On TWIN each coin can have one twin, first come, so copies cannot pile on it here.</p></details>
@@ -153,6 +154,6 @@
 <script src="/assets/lenis.min.js"></script>
 <script src="/assets/gsap.min.js"></script>
 <script src="/assets/ScrollTrigger.min.js"></script>
-<script src="/assets/app.js?v=5"></script>
+<script src="/assets/app.js?v=6"></script>
 </body>
 </html>
