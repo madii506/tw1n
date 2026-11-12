@@ -18,7 +18,8 @@ let CONFIG = {}, WALLET = null, lenis = null, WORLD = null, TREND = [], FOUND = 
 const FV = { f: 'all', s: 'trend' };
 const hue = s => [...String(s || '?')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 11);
 // a coin's picture, or a coloured letter badge when it has none
-const ic = (c, cls = '') => c && c.icon ? `<img class="ci ${cls}" src="${esc(c.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-sym="${esc(c.symbol || '?')}">` : `<span class="ci ph2 ${cls}" style="background:hsl(${hue(c && c.symbol)} 35% 16%);color:hsl(${hue(c && c.symbol)} 80% 76%)">${esc(String(c && c.symbol || '?').slice(0, 2))}</span>`;
+const isrc = u => /^\/assets\//.test(u) ? u : API + '?a=img&u=' + encodeURIComponent(u);
+const ic = (c, cls = '') => c && c.icon ? `<img class="ci ${cls}" src="${esc(isrc(c.icon))}" alt="" loading="lazy" referrerpolicy="no-referrer" data-sym="${esc(c.symbol || '?')}">` : `<span class="ci ph2 ${cls}" style="background:hsl(${hue(c && c.symbol)} 35% 16%);color:hsl(${hue(c && c.symbol)} 80% 76%)">${esc(String(c && c.symbol || '?').slice(0, 2))}</span>`;
 document.addEventListener('error', e => { const i = e.target; if (!(i instanceof HTMLImageElement) || !i.classList.contains('ci')) return; const s = i.dataset.sym || '?', h = hue(s), b = document.createElement('span'); b.className = i.className + ' ph2'; b.textContent = s.slice(0, 2); b.style.cssText = `background:hsl(${h} 35% 16%);color:hsl(${h} 80% 76%)`; i.replaceWith(b); }, true);
 const sym = c => c && c.symbol ? '$' + c.symbol : '—';
 
