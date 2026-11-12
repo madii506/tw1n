@@ -45,9 +45,9 @@ const solUsd = () => memo('solusd', 20000, async () => { const j = await getJ(`$
 const TX = new Map();
 async function txs(sigs) { const need = [...new Set(sigs)].filter(s => !TX.has(s)); for (let i = 0; i < need.length; i += 10) { const part = need.slice(i, i + 10), got = await conn.getParsedTransactions(part, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }); got.forEach((t, k) => { if (t) TX.set(part[k], t); }); } return sigs.map(s => TX.get(s) || null); }
 function parseRite(t, s) { if (!t || (t.meta && t.meta.err)) return null; const msg = t.transaction.message, by = k58(msg.accountKeys[0].pubkey), at = t.blockTime || s.blockTime || 0;
-  const m = msg.instructions.find(ix => ix.program === 'spl-memo' && typeof ix.parsed === 'string' && ix.parsed.startsWith('twin:')); if (!m) return null; const p = m.parsed.split(':');
-  if (p[1] === 'launch' && p[2] === '1' && okKey(p[3]) && okKey(p[4])) return { kind: 'launch', sig: s.signature, at, w: by, mint: okKey(p[3]), pair: okKey(p[4]) };
-  return null; }
+  const m = msg.instructions.find(ix => ix.program === 'spl-memo' && ix.parsed === 'twin:1'); if (!m) return null;
+  const signers = msg.accountKeys.filter((k, i) => i > 0 && k.signer).map(k => k58(k.pubkey)); if (signers.length !== 1) return null;
+  return { kind: 'launch', sig: s.signature, at, w: by, mint: signers[0], pair: null }; }
 const IDX = { rows: new Map(), newest: null };
 const rites = fresh => memo('rites', fresh ? 0 : 15000, async () => { let before, got = [];
   for (let page = 0; page < 6; page++) { const L = await conn.getSignaturesForAddress(TAG, { limit: 1000, before, until: IDX.newest || undefined }); got.push(...L); if (L.length < 1000) break; before = L[L.length - 1].signature; }
@@ -56,7 +56,7 @@ const rites = fresh => memo('rites', fresh ? 0 : 15000, async () => { let before
 // a coin's curve, decoded; a launch counts only if the curve's creator signed it and the curve is really priced in the pair
 const curve = (mint, ttl = 10000) => memo('bc:' + mint, ttl, () => online().fetchBondingCurve(new PublicKey(mint)));
 async function twinsIndex(fresh) { const R = await rites(fresh), L = R.filter(r => r.kind === 'launch'), taken = new Set(), o = [];
-  const ok = await pool(L, 6, async l => { try { const c = await curve(l.mint, 86400e3); return k58(c.creator) === l.w && k58(c.quoteMint) === l.pair; } catch { return false; } });
+  const ok = await pool(L, 6, async l => { try { const c = await curve(l.mint, 86400e3), q = k58(c.quoteMint); if (k58(c.creator) !== l.w || q === SOL || q === '11111111111111111111111111111111') return false; l.pair = q; return true; } catch { return false; } });
   L.forEach((l, i) => { if (!ok[i] || taken.has(l.pair) || taken.has(l.mint)) return; taken.add(l.pair); taken.add(l.mint); o.push(l); }); return o; }
 const twinOf = async fresh => { const L = await twinsIndex(fresh), m = new Map(); for (const l of L) { m.set(l.pair, { twin: l.mint, role: 'pair' }); m.set(l.mint, { twin: l.pair, role: 'twin' }); } return m; };
 
@@ -80,7 +80,7 @@ async function tokenMeta(mint) { return memo('meta:' + mint, 3600e3, async () =>
 async function check(m) { const mint = pk(m, 'paste a coin address or pick one').toBase58(), [tw, info] = await Promise.all([twinOf(false), jupInfo([mint])]), row = info[mint] || null, taken = tw.get(mint) || null;
   let r = null, why = null; try { r = await memo('rq:' + mint, 60000, () => online().resolveQuoteMint(new PublicKey(mint))); } catch (e) { why = String(e && e.message || e); }
   const ok = !!r && r.source === 'pumpCoin' && !taken;
-  return { mint, coin: row, pairable: ok, source: r ? r.source : null, depth: r && r.pumpQuote ? r.pumpQuote.depth : null, taken, reason: taken ? (taken.role === 'pair' ? 'this coin already has its twin' : 'this coin is a twin; pair to its twin instead') : !r ? (/Unsupported/i.test(why || '') ? 'only pump.fun coins can be paired' : clean(why, 160)) : r.source !== 'pumpCoin' ? 'only pump.fun coins can be paired' : null }; }
+  return { mint, coin: row, pairable: ok, err: why ? clean(why, 200) : null, source: r ? r.source : null, depth: r && r.pumpQuote ? r.pumpQuote.depth : null, taken, reason: taken ? (taken.role === 'pair' ? 'this coin already has its twin' : 'this coin is a twin; pair to its twin instead') : !r ? (/UnsupportedQuoteMint/i.test(why || '') && !/pump/i.test(why || '') ? 'only pump.fun coins can be paired' : 'pump.fun refuses this pair: ' + clean(why, 140)) : r.source !== 'pumpCoin' ? 'only pump.fun coins can be paired' : null }; }
 // coins worth pairing right now: what is trending on Solana, pump.fun coins first, with their twin if they have one
 const trending = () => memo('trend', 45000, async () => { const [a, b, tw] = await Promise.all([getJ(`${JUP}/tokens/v2/toptrending/1h?limit=60`).catch(() => []), getJ(`${JUP}/tokens/v2/toporganicscore/1h?limit=60`).catch(() => []), twinOf(false)]), seen = new Set(), o = [];
   for (const t of [...a, ...b]) { if (!t || !t.id || seen.has(t.id)) continue; seen.add(t.id); const r = coinRow(t); if (!r.pump) continue; o.push({ ...r, twin: tw.get(r.mint) || null }); }
@@ -93,10 +93,10 @@ async function buildLaunch(b, req) { const from = pk(b.from, 'connect a wallet f
   const c = await check(pair.toBase58()); if (!c.pairable) throw new Error(c.reason || 'that coin cannot be paired');
   if (await conn.getAccountInfo(mint)) throw new Error('that coin address is taken. try again');
   const r = await online().resolveQuoteMint(pair), ps = c.coin ? clean(c.coin.symbol, 10).replace(/[^A-Za-z0-9]/g, '') : '';
-  const uri = `${host(req)}/api/twin?a=t&n=${encodeURIComponent(name)}&s=${symbol}&p=${pair.toBase58()}&ps=${encodeURIComponent(ps)}&i=${img}`; if (uri.length > 200) throw new Error('that name is too long for the metadata link. shorten it');
+  const uri = `${host(req)}/api/twin?a=t&n=${encodeURIComponent(name)}&s=${symbol}&ps=${encodeURIComponent(ps)}&i=${img}`; if (uri.length > 200) throw new Error('that name is too long for the metadata link. shorten it');
   const ix = await SDKm().PUMP_SDK.createV2Instruction({ mint, name, symbol, uri, creator: from, user: from, mayhemMode: false, quoteMint: pair, quoteTokenProgram: r.quoteTokenProgram, pumpQuote: r.pumpQuote && r.pumpQuote.accounts });
-  const t = new Transaction({ feePayer: from, recentBlockhash: b.bh || await bh() }); t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }), ix, memoIx(`twin:launch:1:${mint.toBase58()}:${pair.toBase58()}`, from), tagIx(from));
-  if (size(t) > 1232) throw new Error('the launch transaction is too large. shorten the name'); return { t, mint: mint.toBase58(), pair: pair.toBase58(), uri }; }
+  const t = new Transaction({ feePayer: from, recentBlockhash: b.bh || await bh() }); t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 400000 }), ix, memoIx('twin:1', from), tagIx(from)); if (size(t) <= 1180) t.instructions.splice(1, 0, ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }));
+  if (size(t) > 1232) throw new Error(`the launch transaction is ${size(t)} bytes, over Solana's 1232. shorten the name or ticker`); return { t, mint: mint.toBase58(), pair: pair.toBase58(), uri }; }
 // buy and sell walk the quote chain in one pump.fun multi-hop swap, priced by simulating it first
 async function route(mint, side) { const l = (await twinsIndex(false)).find(x => x.mint === mint) || (await twinsIndex(true)).find(x => x.mint === mint); if (!l) throw new Error('that coin is not a twin on TWIN');
   const path = side === 'buy' ? [SOL, l.pair, l.mint] : [l.mint, l.pair, SOL]; return { l, hops: await memo(`hops:${mint}:${side}`, 60000, () => online().resolveMultiHopRoute(path.map(x => new PublicKey(x)), side)) }; }
@@ -109,8 +109,8 @@ async function buildTrade(b, side) { const from = pk(b.from, 'connect a wallet f
   const t = new Transaction({ feePayer: from, recentBlockhash: await bh() }); t.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 700000 }), ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }), ...ixs);
   return { txs: [b64(t)], in: amountIn.toString(), out: est.toString(), minOut: minOut.toString(), side }; }
 // the twin's pump.fun metadata, served from the link inside the coin itself
-function metadata(q, req) { const name = clean(q.n, 32), symbol = clean(q.s, 10), pair = okKey(q.p), ps = clean(q.ps, 10).replace(/[^A-Za-z0-9]/g, ''), img = Math.max(1, Math.min(IMAGES, +q.i || 1)), h = host(req);
-  return { name, symbol, description: pair ? `The twin of ${ps ? '$' + ps : pair}. Priced in it on its pump.fun curve: every buy of this coin buys ${ps ? '$' + ps : 'its pair'} first. Pair: ${pair}. Launched on TWIN.` : 'Launched on TWIN.', image: `${h}/assets/coins/${img}.png`, showName: true, createdOn: h, website: h }; }
+function metadata(q, req) { const name = clean(q.n, 32), symbol = clean(q.s, 10), ps = clean(q.ps, 10).replace(/[^A-Za-z0-9]/g, ''), img = Math.max(1, Math.min(IMAGES, +q.i || 1)), h = host(req);
+  return { name, symbol, description: `The twin of ${ps ? '$' + ps : 'its pair'}. Its pump.fun curve is priced in ${ps ? '$' + ps : 'its pair'}, so every buy of this coin buys ${ps ? '$' + ps : 'the pair'} first. Launched on TWIN.`, image: `${h}/assets/coins/${img}.png`, showName: true, createdOn: h, website: h }; }
 
 // ---------------------------------------------------------------- the state of pump.fun's pairing, and dry runs from any wallet
 const state = () => memo('state', 60000, async () => { const g = await global(), q = await online().fetchSupportedQuoteMints().catch(() => []), by = {}; for (const x of q) by[x.source] = (by[x.source] || 0) + 1;
