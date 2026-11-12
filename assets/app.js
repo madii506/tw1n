@@ -22,6 +22,7 @@ const isrc = u => /^\/assets\//.test(u) ? u : API + '?a=img&u=' + encodeURICompo
 const ic = (c, cls = '') => c && c.icon ? `<img class="ci ${cls}" src="${esc(isrc(c.icon))}" alt="" loading="lazy" referrerpolicy="no-referrer" data-sym="${esc(c.symbol || '?')}">` : `<span class="ci ph2 ${cls}" style="background:hsl(${hue(c && c.symbol)} 35% 16%);color:hsl(${hue(c && c.symbol)} 80% 76%)">${esc(String(c && c.symbol || '?').slice(0, 2))}</span>`;
 document.addEventListener('error', e => { const i = e.target; if (!(i instanceof HTMLImageElement) || !i.classList.contains('ci')) return; const s = i.dataset.sym || '?', h = hue(s), b = document.createElement('span'); b.className = i.className + ' ph2'; b.textContent = s.slice(0, 2); b.style.cssText = `background:hsl(${h} 35% 16%);color:hsl(${h} 80% 76%)`; i.replaceWith(b); }, true);
 const sym = c => c && c.symbol ? '$' + c.symbol : '—';
+const nm = c => c && c.name && String(c.name).trim().toLowerCase() !== String(c.symbol || '').trim().toLowerCase() ? c.name : '';
 
 // ---------------------------------------------------------------- fallback background when there is no WebGL
 function startBg2d() { const c = $('#bg'), x = c.getContext('2d'); let W, H; const size = () => { const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }; size(); addEventListener('resize', size);
@@ -34,7 +35,7 @@ function renderPick() { const G = $('#pickGrid'), src = FOUND || TREND, list = s
   $('#fCount').textContent = src.length ? `${list.length} coins${FOUND ? ' found' : ' trending'}` : '';
   if (!src.length) { G.innerHTML = `<div class="empty"><span>${FOUND ? 'Nothing found. Try a ticker or paste the contract address.' : 'Loading what is trending on Solana…'}</span></div>`; return; }
   G.innerHTML = list.length ? list.map(c => `<div class="coin-card glass pk${c.twin ? ' taken' : ''}" data-pick-card="${esc(c.mint)}">
-      <div class="cc-top">${ic(c)}<div style="min-width:0"><b>${esc(sym(c))}</b><small>${esc(c.name || '')}</small></div><span class="rule ${c.twin ? 'S' : 'L'}">${c.twin ? 'has a twin' : c.pump ? 'free' : 'not pump.fun'}</span></div>
+      <div class="cc-top">${ic(c)}<div style="min-width:0"><b>${esc(sym(c))}</b><small>${esc(nm(c))}</small></div><span class="rule ${c.twin ? 'S' : 'L'}">${c.twin ? 'has a twin' : c.pump ? 'free' : 'not pump.fun'}</span></div>
       <div class="cc-pos"><div><span>mcap</span><b>${usd(c.mcap)}</b></div><div><span>1h</span><b class="${(c.ch1 || 0) >= 0 ? 'g' : 'r'}">${pct(c.ch1)}</b></div><div><span>holders</span><b>${big(c.holders)}</b></div></div>
       <div class="pk-acts">${c.twin ? `<button class="btn sm ghost" data-open="${esc(c.twin.role === 'pair' ? c.twin.twin : c.mint)}">see the twin</button>` : `<button class="btn sm" data-pair="${esc(c.mint)}">pair it</button>`}<a class="btn sm ghost" href="https://pump.fun/coin/${esc(c.mint)}" target="_blank" rel="noopener">pump.fun ↗</a><button class="btn sm ghost" data-copy="${esc(c.mint)}" aria-label="copy address">⧉</button></div></div>`).join('')
     : '<div class="empty"><span>No coin matches this filter.</span></div>';
@@ -52,9 +53,9 @@ let VAMPS = [], VS = 'copies';
 async function loadVamps() { try { VAMPS = (await api('vamps')).rows || []; } catch (e) { $('#vampList').innerHTML = `<div class="empty"><span>The scan did not finish: ${esc(e.message)}</span></div>`; return; } renderVamps(); }
 function renderVamps() { const B = $('#vampList'); if (!VAMPS.length) { B.innerHTML = '<div class="empty"><span>No copies found right now.</span></div>'; return; }
   const L2 = VAMPS.slice().sort({ copies: (a, b) => b.copies - a.copies, mcap: (a, b) => (b.coin.mcap || 0) - (a.coin.mcap || 0), copym: (a, b) => b.copyMcap - a.copyMcap }[VS]);
-  B.innerHTML = L2.map(v => { const c = v.coin; return `<div class="vr glass spot"><div class="vr-o">${ic(c, 'md')}<div style="min-width:0"><b>${esc(sym(c))}</b><small>${esc(c.name || '')} · ${usd(c.mcap)}</small></div></div>
+  B.innerHTML = L2.map(v => { const c = v.coin; return `<div class="vr glass spot"><div class="vr-o">${ic(c, 'md')}<div style="min-width:0"><b>${esc(sym(c))}</b><small>${nm(c) ? esc(nm(c)) + ' · ' : ''}${usd(c.mcap)} mcap</small></div></div>
     <div class="vr-n"><b class="${v.copies ? 'r' : 'g'}">${v.copies}</b><small>${v.copies === 1 ? 'copy' : 'copies'}</small></div>
-    <div class="vr-c">${v.top.length ? v.top.map(x => `<a class="vr-x" href="https://pump.fun/coin/${esc(x.mint)}" target="_blank" rel="noopener" title="${esc(x.name || '')}">${ic(x, 'xs')}${esc(short(x.mint))} <i>${usd(x.mcap)}</i></a>`).join('') : '<span class="dim">no copies yet</span>'}</div>
+    <div class="vr-c"><span class="vr-stack">${v.top.map(x => `<a href="https://solscan.io/token/${esc(x.mint)}" target="_blank" rel="noopener" title="a copy: ${esc(x.name || x.symbol || '')} · ${usd(x.mcap)}">${ic(x, 'md')}</a>`).join('')}${v.copies > v.top.length ? `<em>+${v.copies - v.top.length}</em>` : ''}</span><span class="vr-sum"><b>${usd(v.copyMcap)}</b><small>held by copies, not the original</small></span></div>
     <div class="vr-a">${c.twin ? `<button class="btn sm ghost" data-open="${esc(c.twin.role === 'pair' ? c.twin.twin : c.mint)}">see its twin</button>` : `<button class="btn sm" data-pair="${esc(c.mint)}">pair the original</button>`}<a class="btn sm ghost" href="https://pump.fun/coin/${esc(c.mint)}" target="_blank" rel="noopener">pump.fun ↗</a></div></div>`; }).join('');
   if (window.gsap && !reduced) gsap.from($$('.vr', B), { x: -20, opacity: 0, duration: .7, ease: 'expo.out', stagger: .04 }); }
 chipGroup('#vSort', v => { VS = v; renderVamps(); }); $('#vRefresh').onclick = () => { toast('scanning Solana…'); loadVamps(); };
@@ -168,7 +169,7 @@ async function signSend(b64, extra) { const S = await web3(), tx = S.Transaction
 let HP = 0; const free = () => HOT.filter(c => !c.twin); const featured = () => { const v = free().filter(c => c.pairable); return v.length ? v : free(); };
 function heroPair() { const F = featured(); if (!F.length) return; const c = F[((HP % F.length) + F.length) % F.length], ok = !!c.pairable;
   $('#hpLabel').innerHTML = `featured pump.fun coin ${ok ? '<b class="g">· pump.fun accepts it as a pair</b>' : ''}`;
-  $('#hpCoin').innerHTML = `${ic(c, 'lg2')}<div class="hp-id"><b>${esc(sym(c))}</b><small>${esc(c.name || '')}</small><button class="ca" data-copy="${esc(c.mint)}">${esc(short(c.mint))} ⧉</button></div>`;
+  $('#hpCoin').innerHTML = `${ic(c, 'lg2')}<div class="hp-id"><b>${esc(sym(c))}</b><small>${esc(nm(c))}</small><button class="ca" data-copy="${esc(c.mint)}">${esc(short(c.mint))} ⧉</button></div>`;
   const cell = (k, v, cls = '') => `<div><span>${k}</span><b class="${cls}">${v}</b></div>`;
   $('#hpStats').innerHTML = cell('mcap', usd(c.mcap)) + cell('1h', pct(c.ch1), (c.ch1 || 0) >= 0 ? 'g' : 'r') + cell('24h', pct(c.ch24), (c.ch24 || 0) >= 0 ? 'g' : 'r') + cell('holders', big(c.holders)) + cell('24h volume', usd(c.vol24)) + cell('liquidity', usd(c.liq)) + cell('buys / sells 1h', c.buys1h != null ? big(c.buys1h) + ' / ' + big(c.sells1h) : '—') + cell(c.graduated ? 'pump.fun' : 'curve', c.graduated ? 'graduated' : 'on curve');
   $('#hpPair').innerHTML = `${ic(c, 'lg2')}<b>${esc(sym(c))}</b><small>the pair</small>`; $('#hpRoute').innerHTML = `<span>SOL</span><b>›</b><span>${esc(sym(c))}</span><b>›</b><span>your twin</span>`;
