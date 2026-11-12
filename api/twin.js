@@ -86,7 +86,7 @@ async function check(m) { const mint = pk(m, 'paste a coin address or pick one')
   return { mint, coin: row, pairable: ok, err: why ? clean(why, 200) : null, source: r ? r.source : null, depth: r && r.pumpQuote ? r.pumpQuote.depth : null, taken, reason: taken ? (taken.role === 'pair' ? 'this coin already has its twin' : 'this coin is a twin; pair to its twin instead') : !r ? (/UnsupportedQuoteMint/i.test(why || '') && !/pump/i.test(why || '') ? 'only pump.fun coins can be paired' : 'pump.fun refuses this pair: ' + clean(why, 140)) : r.source !== 'pumpCoin' ? 'only pump.fun coins can be paired' : null }; }
 // coins worth pairing right now: trending, new, most traded or most organic on Solana, pump.fun coins only, with their twin if they have one;
 // the first ones are checked against pump.fun itself, so the featured coin is one pump.fun will really accept as a pair
-const HIDE = new Set(['npz2FhoufQ7pKqhGpaipYWacrAkidyW2yDpVWSvpump', ...String(process.env.TWIN_HIDE || '').split(',').map(x => x.trim()).filter(Boolean)]);
+const HIDE = new Set(['npz2FhoufQ7pKqhGpaipYWacrAkidyW2yDpVWSvpump', '4xgqefa5WcdHWKXzqvM9MRJqWYGaHVEUnpUL4Vq5pump', ...String(process.env.TWIN_HIDE || '').split(',').map(x => x.trim()).filter(Boolean)]);
 const clean2 = c => c.pump && /pump$/.test(c.mint) && !HIDE.has(c.mint) && c.icon && /^[\x20-\x7e]{1,12}$/.test(String(c.symbol || ''));
 const TABS = { trend: 'toptrending/1h?limit=80', traded: 'toptraded/1h?limit=80', organic: 'toporganicscore/1h?limit=80', new: 'recent?limit=80' };
 const pairableOf = async mint => { try { const r = await memo('rq:' + mint, 300000, () => online().resolveQuoteMint(new PublicKey(mint))); return r.source === 'pumpCoin' ? (r.pumpQuote ? r.pumpQuote.depth : 1) : null; } catch { return null; } };
