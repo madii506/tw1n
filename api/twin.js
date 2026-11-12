@@ -86,18 +86,20 @@ async function check(m) { const mint = pk(m, 'paste a coin address or pick one')
   return { mint, coin: row, pairable: ok, err: why ? clean(why, 200) : null, source: r ? r.source : null, depth: r && r.pumpQuote ? r.pumpQuote.depth : null, taken, reason: taken ? (taken.role === 'pair' ? 'this coin already has its twin' : 'this coin is a twin; pair to its twin instead') : !r ? (/UnsupportedQuoteMint/i.test(why || '') && !/pump/i.test(why || '') ? 'only pump.fun coins can be paired' : 'pump.fun refuses this pair: ' + clean(why, 140)) : r.source !== 'pumpCoin' ? 'only pump.fun coins can be paired' : null }; }
 // coins worth pairing right now: trending, new, most traded or most organic on Solana, pump.fun coins only, with their twin if they have one;
 // the first ones are checked against pump.fun itself, so the featured coin is one pump.fun will really accept as a pair
+const HIDE = new Set(['npz2FhoufQ7pKqhGpaipYWacrAkidyW2yDpVWSvpump', ...String(process.env.TWIN_HIDE || '').split(',').map(x => x.trim()).filter(Boolean)]);
+const clean2 = c => c.pump && /pump$/.test(c.mint) && !HIDE.has(c.mint) && c.icon && /^[\x20-\x7e]{1,12}$/.test(String(c.symbol || ''));
 const TABS = { trend: 'toptrending/1h?limit=80', traded: 'toptraded/1h?limit=80', organic: 'toporganicscore/1h?limit=80', new: 'recent?limit=80' };
 const pairableOf = async mint => { try { const r = await memo('rq:' + mint, 300000, () => online().resolveQuoteMint(new PublicKey(mint))); return r.source === 'pumpCoin' ? (r.pumpQuote ? r.pumpQuote.depth : 1) : null; } catch { return null; } };
 const trending = (tab = 'trend') => memo('trend:' + tab, 45000, async () => { const [a, tw] = await Promise.all([getJ(`${JUP}/tokens/v2/${TABS[tab] || TABS.trend}`).catch(() => []), twinOf(false)]), seen = new Set(), o = [];
-  for (const t of a || []) { if (!t || !t.id || seen.has(t.id)) continue; seen.add(t.id); const r = coinRow(t); if (!r.pump) continue; o.push({ ...r, twin: tw.get(r.mint) || null }); }
+  for (const t of a || []) { if (!t || !t.id || seen.has(t.id)) continue; seen.add(t.id); const r = coinRow(t); if (!clean2(r)) continue; o.push({ ...r, twin: tw.get(r.mint) || null }); }
   const L = o.slice(0, 48), top = L.filter(c => !c.twin).slice(0, 10), deps = await pool(top, 4, c => pairableOf(c.mint)); top.forEach((c, i) => { c.pairable = deps[i] != null; c.depth = deps[i]; });
   return { at: Date.now(), tab, coins: L }; });
 // the vamp radar: for the coins that are running, every other token on Solana wearing the same ticker
-const vamps = () => memo('vamps', 300000, async () => { const L = (await trending('trend')).coins.slice(0, 14);
+const vamps = () => memo('vamps', 300000, async () => { const T = (await trending('trend')).coins.slice(0, 16), ok = await pool(T, 4, c => c.pairable != null ? (c.pairable ? 1 : null) : pairableOf(c.mint)), L = T.filter((c, i) => ok[i] != null).slice(0, 10);
   const rows = await pool(L, 3, async c => { try { const sym = String(c.symbol || '').trim(); if (!sym) return null; const j = await memo('vs:' + sym.toLowerCase(), 600000, () => getJ(`${JUP}/tokens/v2/search?query=${encodeURIComponent(sym)}`));
-      const copies = (j || []).filter(t => t.id !== c.mint && String(t.symbol || '').trim().toLowerCase() === sym.toLowerCase()).map(coinRow).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
-      return { coin: c, copies: copies.length, top: copies.slice(0, 4), copyMcap: copies.reduce((s, x) => s + (x.mcap || 0), 0) }; } catch { return null; } });
-  return { at: Date.now(), rows: rows.filter(Boolean).sort((a, b) => b.copies - a.copies) }; });
+      const copies = (j || []).filter(t => t.id !== c.mint && !HIDE.has(t.id) && String(t.symbol || '').trim().toLowerCase() === sym.toLowerCase()).map(coinRow).sort((a, b) => (b.mcap || 0) - (a.mcap || 0));
+      return { coin: c, copies: copies.length, top: copies.slice(0, 6).map(x => ({ mint: x.mint, symbol: x.symbol, name: x.name, icon: x.icon, mcap: x.mcap })), copyMcap: copies.reduce((s, x) => s + (x.mcap || 0), 0) }; } catch { return null; } });
+  return { at: Date.now(), rows: rows.filter(r => r && r.copies > 0).sort((a, b) => b.copies - a.copies) }; });
 const find = q => memo('find:' + q, 30000, async () => { const tw = await twinOf(false), j = await getJ(`${JUP}/tokens/v2/search?query=${encodeURIComponent(q)}`); return { coins: (j || []).slice(0, 20).map(t => { const r = coinRow(t); return { ...r, twin: tw.get(r.mint) || null }; }) }; });
 
 // ---------------------------------------------------------------- the transactions the user signs
